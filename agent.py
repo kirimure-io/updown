@@ -176,8 +176,39 @@ TOOL_DECLARATIONS = [
 ]
 
 
+def _post_with_retry(model: str, data: bytes, api_key: str, retries: int = 3) -> dict[str, Any]:
+    """POST payload to a Gemini model with exponential backoff on transient errors."""
+    endpoint = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{model}:generateContent?key={api_key}"
+    )
+    for attempt in range(retries):
+        log_step(f"Chamando Gemini ({model}, tentativa {attempt + 1}/{retries})...")
+        req = urllib.request.Request(
+            endpoint,
+            data=data,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            if exc.code not in (429, 503):
+                raise
+            log_step(f"Gemini retornou HTTP {exc.code}.")
+        except (TimeoutError, urllib.error.URLError) as exc:
+            log_step(f"Erro de rede/timeout no Gemini: {exc}")
+
+        if attempt < retries - 1:
+            wait = 2**attempt
+            log_step(f"Aguardando {wait}s para tentar novamente...")
+            time.sleep(wait)
+    raise RuntimeError(f"Falha ao chamar {model} após {retries} tentativas.")
+
+
 def call_gemini(contents: list[dict[str, Any]], api_key: str, retries: int = 3) -> dict[str, Any]:
-    """Send a generateContent request to Gemini REST API with retry and model fallback."""
+    """Send a generateContent request to Gemini REST API with model fallback."""
     payload = {
         "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
         "contents": contents,
@@ -189,44 +220,12 @@ def call_gemini(contents: list[dict[str, Any]], api_key: str, retries: int = 3) 
         models.append("gemini-3.5-flash-lite")
 
     for model in models:
-        endpoint = (
-            "https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{model}:generateContent?key={api_key}"
-        )
-        for attempt in range(retries):
-            log_step(f"Chamando Gemini ({model}, tentativa {attempt + 1}/{retries})...")
-            req = urllib.request.Request(
-                endpoint,
-                data=data,
-                headers={"Content-Type": "application/json"},
-                method="POST",
-            )
-            try:
-                with urllib.request.urlopen(req, timeout=30) as resp:
-                    return json.loads(resp.read().decode("utf-8"))
-            except urllib.error.HTTPError as exc:
-                if exc.code in (429, 503):
-                    log_step(f"Gemini retornou HTTP {exc.code}.")
-                    if attempt < retries - 1:
-                        wait = 2**attempt
-                        log_step(f"Aguardando {wait}s para tentar novamente...")
-                        time.sleep(wait)
-                        continue
-                    if model != models[-1]:
-                        log_step(f"Fallback para {models[-1]}...")
-                        break
+        try:
+            return _post_with_retry(model, data, api_key, retries=retries)
+        except Exception:
+            if model == models[-1]:
                 raise
-            except (TimeoutError, urllib.error.URLError) as exc:
-                log_step(f"Erro de rede/timeout no Gemini: {exc}")
-                if attempt < retries - 1:
-                    wait = 2**attempt
-                    log_step(f"Aguardando {wait}s para tentar novamente...")
-                    time.sleep(wait)
-                    continue
-                if model != models[-1]:
-                    log_step(f"Fallback para {models[-1]}...")
-                    break
-                raise
+            log_step(f"Fallback para {models[-1]}...")
     raise RuntimeError("Unreachable")
 
 
