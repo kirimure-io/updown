@@ -20,7 +20,7 @@ import urllib.request
 from typing import Any
 
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
-# GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
+FALLBACK_MODEL = "gemini-3.5-flash-lite"
 FALADOR = os.environ.get("FALADOR", "").lower() == "true"
 
 SYSTEM_PROMPT = (
@@ -212,8 +212,8 @@ def call_gemini(contents: list[dict[str, Any]], api_key: str, retries: int = 3) 
     }
     data = json.dumps(payload).encode("utf-8")
     models = [GEMINI_MODEL]
-    if GEMINI_MODEL != "gemini-3.5-flash-lite":
-        models.append("gemini-3.5-flash-lite")
+    if GEMINI_MODEL != FALLBACK_MODEL:
+        models.append(FALLBACK_MODEL)
 
     for model in models:
         try:
