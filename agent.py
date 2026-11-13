@@ -20,6 +20,7 @@ import urllib.request
 from typing import Any
 
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+# GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 GEMINI_ENDPOINT = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
     f"{GEMINI_MODEL}:generateContent"
