@@ -1,17 +1,46 @@
 # updown-agent
 
-Agente de IA em Python (apenas biblioteca padrão) que verifica se um site está online ou com downtime.
+> **Nota:** Este projeto é apenas um **experimento didático** para demonstrar como construir um agente de IA com *tool-calling* do zero usando apenas a biblioteca padrão do Python (zero dependências externas).
+
+Agente de IA em Python que verifica se um site está online ou com downtime, diagnosticando HTTP, DNS e TLS.
+
+## Funcionalidades
+
+- **Zero dependências externas:** usa apenas biblioteca padrão (`urllib.request`, `socket`, `ssl`, `json`, `argparse`).
+- **Ferramentas de diagnóstico:**
+  - `check_http`: verifica status HTTP e latência (com headers padrão de navegador).
+  - `check_dns`: resolve registros DNS (`socket.getaddrinfo`).
+  - `check_tls`: valida handshake TLS e data de expiração do certificado.
+- **Resiliência na API Gemini:** retry com *backoff* exponencial em erros `429`/`503` e fallback automático de `gemini-3.8-flash` para `gemini-3.5-flash-lite`.
+- **Modo fallback sem IA:** se `GEMINI_API_KEY` não estiver definida, executa as checagens diretamente e retorna um JSON.
+- **Modo verboso (`FALADOR=true`):** imprime no `stderr` cada passo do agente, chamadas de modelo, retries e resultados das ferramentas.
 
 ## Uso
 
-Com `GEMINI_API_KEY` (modo agente de IA com tool-calling):
+### Com agente de IA (`GEMINI_API_KEY`)
 
 ```bash
 export GEMINI_API_KEY="sua-chave"
 uv run python agent.py https://example.com
 ```
 
-Sem `GEMINI_API_KEY` (modo fallback determinístico):
+### Modo verboso
+
+```bash
+FALADOR=true uv run python agent.py https://example.com
+```
+
+### Trocar o modelo
+
+Via variável de ambiente:
+
+```bash
+GEMINI_MODEL=gemini-3.5-flash-lite uv run python agent.py https://example.com
+```
+
+Ou comentando/descomentando a linha correspondente no topo de `agent.py`.
+
+### Sem `GEMINI_API_KEY` (modo fallback determinístico)
 
 ```bash
 uv run python agent.py https://example.com

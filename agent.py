@@ -216,6 +216,17 @@ def call_gemini(contents: list[dict[str, Any]], api_key: str, retries: int = 3) 
                         log_step(f"Fallback para {models[-1]}...")
                         break
                 raise
+            except (TimeoutError, urllib.error.URLError) as exc:
+                log_step(f"Erro de rede/timeout no Gemini: {exc}")
+                if attempt < retries - 1:
+                    wait = 2**attempt
+                    log_step(f"Aguardando {wait}s para tentar novamente...")
+                    time.sleep(wait)
+                    continue
+                if model != models[-1]:
+                    log_step(f"Fallback para {models[-1]}...")
+                    break
+                raise
     raise RuntimeError("Unreachable")
 
 
