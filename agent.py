@@ -43,7 +43,14 @@ def check_http(url: str, timeout: int = 10) -> dict[str, Any]:
     req = urllib.request.Request(
         url,
         method="GET",
-        headers={"User-Agent": "updown-agent/0.1"},
+        headers={
+            "User-Agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+            ),
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+        },
     )
     start = time.monotonic()
     try:
@@ -162,22 +169,42 @@ TOOL_DECLARATIONS = [
 ]
 
 
-def call_gemini(contents: list[dict[str, Any]], api_key: str) -> dict[str, Any]:
-    """Send a generateContent request to Gemini REST API."""
+def call_gemini(contents: list[dict[str, Any]], api_key: str, retries: int = 3) -> dict[str, Any]:
+    """Send a generateContent request to Gemini REST API with retry and model fallback."""
     payload = {
         "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
         "contents": contents,
         "tools": [{"functionDeclarations": TOOL_DECLARATIONS}],
     }
     data = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(
-        f"{GEMINI_ENDPOINT}?key={api_key}",
-        data=data,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    models = [GEMINI_MODEL]
+    if GEMINI_MODEL != "gemini-3.5-flash-lite":
+        models.append("gemini-3.5-flash-lite")
+
+    for model in models:
+        endpoint = (
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{model}:generateContent?key={api_key}"
+        )
+        for attempt in range(retries):
+            req = urllib.request.Request(
+                endpoint,
+                data=data,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    return json.loads(resp.read().decode("utf-8"))
+            except urllib.error.HTTPError as exc:
+                if exc.code in (429, 503):
+                    if attempt < retries - 1:
+                        time.sleep(2**attempt)
+                        continue
+                    if model != models[-1]:
+                        break
+                raise
+    raise RuntimeError("Unreachable")
 
 
 def run_ai_agent(target: str, api_key: str, max_steps: int = 6) -> str:
