@@ -21,6 +21,13 @@ from typing import Any
 
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
 # GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
+FALADOR = os.environ.get("FALADOR", "").lower() == "true"
+
+
+def log_step(msg: str) -> None:
+    """Print verbose step logs when FALADOR=true."""
+    if FALADOR:
+        print(f"[FALADOR] {msg}", file=sys.stderr)
 GEMINI_ENDPOINT = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
     f"{GEMINI_MODEL}:generateContent"
@@ -187,6 +194,7 @@ def call_gemini(contents: list[dict[str, Any]], api_key: str, retries: int = 3) 
             f"{model}:generateContent?key={api_key}"
         )
         for attempt in range(retries):
+            log_step(f"Chamando Gemini ({model}, tentativa {attempt + 1}/{retries})...")
             req = urllib.request.Request(
                 endpoint,
                 data=data,
@@ -198,10 +206,14 @@ def call_gemini(contents: list[dict[str, Any]], api_key: str, retries: int = 3) 
                     return json.loads(resp.read().decode("utf-8"))
             except urllib.error.HTTPError as exc:
                 if exc.code in (429, 503):
+                    log_step(f"Gemini retornou HTTP {exc.code}.")
                     if attempt < retries - 1:
-                        time.sleep(2**attempt)
+                        wait = 2**attempt
+                        log_step(f"Aguardando {wait}s para tentar novamente...")
+                        time.sleep(wait)
                         continue
                     if model != models[-1]:
+                        log_step(f"Fallback para {models[-1]}...")
                         break
                 raise
     raise RuntimeError("Unreachable")
@@ -214,7 +226,8 @@ def run_ai_agent(target: str, api_key: str, max_steps: int = 6) -> str:
         {"role": "user", "parts": [{"text": f"Check if this site is online or has downtime: {target}"}]}
     ]
 
-    for _ in range(max_steps):
+    for step in range(1, max_steps + 1):
+        log_step(f"Passo {step}/{max_steps} do agente...")
         response = call_gemini(contents, api_key)
         candidate = response["candidates"][0]["content"]
         contents.append(candidate)
@@ -224,6 +237,7 @@ def run_ai_agent(target: str, api_key: str, max_steps: int = 6) -> str:
 
         # Se o modelo não pediu nenhuma ferramenta, ele já gerou a resposta final.
         if not function_calls:
+            log_step("Modelo concluiu o diagnóstico.")
             texts = [p["text"] for p in parts if "text" in p]
             return "\n".join(texts).strip()
 
@@ -232,8 +246,10 @@ def run_ai_agent(target: str, api_key: str, max_steps: int = 6) -> str:
         for fc in function_calls:
             name = fc["name"]
             args = fc.get("args", {})
+            log_step(f"Executando ferramenta {name}({args})...")
             fn = TOOLS_MAP.get(name)
             result = fn(**args) if fn else {"error": f"Unknown tool: {name}"}
+            log_step(f"Resultado de {name}: {result}")
             tool_responses.append(
                 {
                     "functionResponse": {
@@ -249,11 +265,16 @@ def run_ai_agent(target: str, api_key: str, max_steps: int = 6) -> str:
 
 def run_fallback(target: str) -> str:
     """Deterministic check when GEMINI_API_KEY is not set."""
+    log_step(f"Modo fallback: checando HTTP para {target}...")
     http_res = check_http(target)
     parsed = urllib.parse.urlparse(http_res["url"])
     hostname = parsed.hostname or target
+    log_step(f"Modo fallback: checando DNS para {hostname}...")
     dns_res = check_dns(hostname)
-    tls_res = check_tls(hostname) if parsed.scheme == "https" else None
+    tls_res = None
+    if parsed.scheme == "https":
+        log_step(f"Modo fallback: checando TLS para {hostname}...")
+        tls_res = check_tls(hostname)
 
     report = {
         "mode": "fallback (set GEMINI_API_KEY for AI agent)",
