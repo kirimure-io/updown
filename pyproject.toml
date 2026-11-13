@@ -1,0 +1,7 @@
+[project]
+name = "updown-agent"
+version = "0.1.0"
+description = "Lightweight AI agent in Python stdlib to check website uptime and diagnose downtime."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
