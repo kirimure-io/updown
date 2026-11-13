@@ -8,6 +8,7 @@ reasoning when GEMINI_API_KEY is set, with a deterministic fallback otherwise.
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import json
 import os
 import socket
@@ -39,10 +40,22 @@ def log_step(msg: str) -> None:
         print(f"[FALADOR] {msg}", file=sys.stderr)
 
 
+def _ensure_public_host(hostname: str) -> None:
+    """Block private, loopback, and link-local IPs to mitigate SSRF."""
+    for info in socket.getaddrinfo(hostname, None):
+        ip = ipaddress.ip_address(info[4][0])
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+            raise ValueError(f"SSRF blocked: {hostname} resolves to non-public IP {ip}")
+
+
 def check_http(url: str, timeout: int = 10) -> dict[str, Any]:
     """Perform an HTTP GET request and measure status code and latency."""
     if not url.startswith(("http://", "https://")):
         url = f"https://{url}"
+
+    parsed = urllib.parse.urlparse(url)
+    if parsed.hostname:
+        _ensure_public_host(parsed.hostname)
 
     req = urllib.request.Request(
         url,
@@ -108,6 +121,7 @@ def check_dns(hostname: str) -> dict[str, Any]:
 
 def check_tls(hostname: str, port: int = 443, timeout: int = 5) -> dict[str, Any]:
     """Check TLS handshake and certificate expiration for a hostname."""
+    _ensure_public_host(hostname)
     ctx = ssl.create_default_context()
     try:
         with socket.create_connection((hostname, port), timeout=timeout) as sock:
