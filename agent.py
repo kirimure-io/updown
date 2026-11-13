@@ -23,16 +23,6 @@ GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
 # GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 FALADOR = os.environ.get("FALADOR", "").lower() == "true"
 
-
-def log_step(msg: str) -> None:
-    """Print verbose step logs when FALADOR=true."""
-    if FALADOR:
-        print(f"[FALADOR] {msg}", file=sys.stderr)
-GEMINI_ENDPOINT = (
-    "https://generativelanguage.googleapis.com/v1beta/models/"
-    f"{GEMINI_MODEL}:generateContent"
-)
-
 SYSTEM_PROMPT = (
     "You are an SRE uptime diagnostic agent. "
     "Given a target URL, use the available tools (check_http, check_dns, check_tls) "
@@ -40,6 +30,12 @@ SYSTEM_PROMPT = (
     "If check_http fails or returns 5xx, use check_dns and check_tls to isolate the root cause. "
     "Respond concisely in Portuguese with: Status (ONLINE/DOWNTIME), HTTP code, latency, and cause."
 )
+
+
+def log_step(msg: str) -> None:
+    """Print verbose step logs when FALADOR=true."""
+    if FALADOR:
+        print(f"[FALADOR] {msg}", file=sys.stderr)
 
 
 def check_http(url: str, timeout: int = 10) -> dict[str, Any]:
