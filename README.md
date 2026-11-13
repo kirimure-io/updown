@@ -1,6 +1,8 @@
 # updown-agent
 
 > **Nota:** Este projeto é apenas um **experimento didático** para demonstrar como construir um agente de IA com *tool-calling* do zero usando apenas a biblioteca padrão do Python (zero dependências externas).
+>
+> **Versão mínima (`v1-minimo`):** para estudar apenas o loop básico de *tool-calling* sem ruído de resiliência e observabilidade, use `git checkout v1-minimo`. Para voltar à versão atual (com retry, fallback, logs e proteção SSRF), use `git checkout main`.
 
 Agente de IA em Python que verifica se um site está online ou com downtime, diagnosticando HTTP, DNS e TLS.
 
