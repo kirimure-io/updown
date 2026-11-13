@@ -111,6 +111,11 @@ def check_tls(hostname: str, port: int = 443, timeout: int = 5) -> dict[str, Any
         return {"hostname": hostname, "tls_ok": False, "not_after": None, "error": str(exc)}
 
 
+# Mapeia o nome da ferramenta (usado pelo modelo) para a função Python correspondente.
+# Para adicionar uma nova ferramenta:
+# 1. Crie a função acima retornando um dict serializável em JSON.
+# 2. Registre-a aqui em TOOLS_MAP.
+# 3. Adicione o schema dela em TOOL_DECLARATIONS abaixo.
 TOOLS_MAP = {
     "check_http": check_http,
     "check_dns": check_dns,
@@ -176,6 +181,7 @@ def call_gemini(contents: list[dict[str, Any]], api_key: str) -> dict[str, Any]:
 
 def run_ai_agent(target: str, api_key: str, max_steps: int = 6) -> str:
     """Run the tool-calling loop with Gemini until a final answer is produced."""
+    # Histórico da conversa enviado a cada iteração para manter contexto entre chamadas.
     contents: list[dict[str, Any]] = [
         {"role": "user", "parts": [{"text": f"Check if this site is online or has downtime: {target}"}]}
     ]
@@ -188,10 +194,12 @@ def run_ai_agent(target: str, api_key: str, max_steps: int = 6) -> str:
         parts = candidate.get("parts", [])
         function_calls = [p["functionCall"] for p in parts if "functionCall" in p]
 
+        # Se o modelo não pediu nenhuma ferramenta, ele já gerou a resposta final.
         if not function_calls:
             texts = [p["text"] for p in parts if "text" in p]
             return "\n".join(texts).strip()
 
+        # Executa cada ferramenta solicitada e devolve o resultado como "functionResponse".
         tool_responses = []
         for fc in function_calls:
             name = fc["name"]
