@@ -8,7 +8,7 @@ Agente de IA em Python que verifica se um site está online ou com downtime, dia
 
 - **Zero dependências externas:** usa apenas biblioteca padrão (`urllib.request`, `socket`, `ssl`, `json`, `argparse`).
 - **Ferramentas de diagnóstico:**
-  - `check_http`: verifica status HTTP e latência (com headers padrão de navegador).
+  - `check_http`: verifica status HTTP e latência (com headers padrão de navegador; *trade-off* didático: evita falsos positivos de WAF/CDN, mas faz o monitor se passar por navegador em vez de se identificar como bot).
   - `check_dns`: resolve registros DNS (`socket.getaddrinfo`).
   - `check_tls`: valida handshake TLS e data de expiração do certificado.
 - **Resiliência na API Gemini:** retry com *backoff* exponencial em erros `429`/`503` e fallback automático de `gemini-3.8-flash` para `gemini-3.5-flash-lite`.
