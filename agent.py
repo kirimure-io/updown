@@ -239,7 +239,10 @@ def run_ai_agent(target: str, api_key: str, max_steps: int = 6) -> str:
     for step in range(1, max_steps + 1):
         log_step(f"Passo {step}/{max_steps} do agente...")
         response = call_gemini(contents, api_key)
-        candidate = response["candidates"][0]["content"]
+        candidates = response.get("candidates") or []
+        if not candidates or "content" not in candidates[0]:
+            return f"Resposta vazia ou bloqueada pela API: {response.get('promptFeedback', response)}"
+        candidate = candidates[0]["content"]
         contents.append(candidate)
 
         parts = candidate.get("parts", [])
