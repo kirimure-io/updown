@@ -28,6 +28,7 @@ SYSTEM_PROMPT = (
     "Given a target URL, use the available tools (check_http, check_dns, check_tls) "
     "to determine whether the site is ONLINE or experiencing DOWNTIME. "
     "If check_http fails or returns 5xx, use check_dns and check_tls to isolate the root cause. "
+    "Note that HTTP 403 or 503 with valid DNS/TLS may indicate a WAF/bot-protection block rather than real downtime; distinguish that clearly. "
     "Respond concisely in Portuguese with: Status (ONLINE/DOWNTIME), HTTP code, latency, and cause."
 )
 
