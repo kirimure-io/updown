@@ -46,6 +46,14 @@ Ou comentando/descomentando a linha correspondente no topo de `agent.py`.
 uv run python agent.py https://example.com
 ```
 
+### Rodando via Antigravity CLI ou Harness
+
+- **Pelo Antigravity CLI:** peça diretamente no chat (ex: *"roda o agent.py para https://google.com"*). Como o script faz chamadas de rede, a execução precisa de permissão fora da sandbox.
+- **Via harness / CI / script:**
+  - Sem `GEMINI_API_KEY`, o script retorna JSON puro no `stdout`, pronto para ser consumido por `jq` ou outro script.
+  - Com `GEMINI_API_KEY` e `FALADOR=true`, os logs vão para `stderr` e o diagnóstico final vai para `stdout`.
+  - Para uso por outros agentes no Antigravity, o script pode ser exposto como **Skill** ou **MCP server**.
+
 ## Arquitetura
 
 O agente funciona em um loop simples de **tool-calling** (chamada de ferramentas):

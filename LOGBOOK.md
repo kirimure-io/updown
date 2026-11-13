@@ -19,3 +19,9 @@ Registro técnico das decisões e evoluções do projeto para contexto rápido d
 ### 3. Atualização de modelo (`f3471ab`, `ae244f7`)
 - Modelo padrão atualizado de `gemini-2.5-flash` para `gemini-3.8-flash` (após verificação dos modelos ativos na API Gemini).
 - Adicionada linha comentada para `gemini-3.5-flash-lite` logo abaixo de `GEMINI_MODEL` para troca rápida sem alterar lógica.
+
+### 4. Resiliência, modo verboso e documentação (`a24c09a`, `a581c9e`, `70c4c3f`)
+- **Headers de navegador em `check_http`:** evita bloqueios `503` de WAF/CDN que rejeitam `User-Agent` genérico.
+- **Retry + fallback de modelo em `call_gemini`:** 3 tentativas com *backoff* exponencial para `429`, `503`, `TimeoutError` e `URLError`, com fallback automático para `gemini-3.5-flash-lite`.
+- **Modo verboso (`FALADOR=true`):** `log_step()` imprime passos, retries e resultados de ferramentas em `stderr`, mantendo `stdout` limpo para o diagnóstico final.
+- **Documentação:** `README.md` atualizado com aviso de experimento didático, todas as features e instruções de uso via Antigravity CLI / harness.
