@@ -258,7 +258,15 @@ def run_ai_agent(target: str, api_key: str, max_steps: int = 6) -> str:
             args = fc.get("args", {})
             log_step(f"Executando ferramenta {name}({args})...")
             fn = TOOLS_MAP.get(name)
-            result = fn(**args) if fn else {"error": f"Unknown tool: {name}"}
+            if not fn:
+                result = {"error": f"Unknown tool: {name}"}
+            else:
+                try:
+                    result = fn(**args)
+                except TypeError as exc:
+                    result = {"error": f"Invalid arguments for {name}: {exc}"}
+                except Exception as exc:
+                    result = {"error": f"Tool {name} failed: {exc}"}
             log_step(f"Resultado de {name}: {result}")
             tool_responses.append(
                 {
