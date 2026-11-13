@@ -177,14 +177,17 @@ def _post_with_retry(model: str, data: bytes, api_key: str, retries: int = 3) ->
     """POST payload to a Gemini model with exponential backoff on transient errors."""
     endpoint = (
         "https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{model}:generateContent?key={api_key}"
+        f"{model}:generateContent"
     )
     for attempt in range(retries):
         log_step(f"Chamando Gemini ({model}, tentativa {attempt + 1}/{retries})...")
         req = urllib.request.Request(
             endpoint,
             data=data,
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "x-goog-api-key": api_key,
+            },
             method="POST",
         )
         try:
